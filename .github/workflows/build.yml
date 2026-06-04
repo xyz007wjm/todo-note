@@ -1,0 +1,83 @@
+name: 构建 Windows 安装包
+
+on:
+  push:
+    tags:
+      - 'v*'          # 推送标签时触发，如 v1.0.0
+  workflow_dispatch:   # 手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          architecture: 'x64'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: 生成应用图标 (ICO)
+        run: |
+          python -c "
+          from PIL import Image, ImageDraw, ImageFont
+          import os
+          img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+          draw.rounded_rectangle([20, 20, 236, 236], radius=40, fill='#1677FF')
+          try:
+              font = ImageFont.truetype('C:\\Windows\\Fonts\\segoeuib.ttf', 80)
+          except:
+              font = ImageFont.load_default()
+          bbox = draw.textbbox((0, 0), 'TODO', font=font)
+          x = (256 - (bbox[2] - bbox[0])) // 2
+          y = (256 - (bbox[3] - bbox[1])) // 2
+          draw.text((x, y), 'TODO', fill='white', font=font)
+          img.save('icon.png')
+          img.save('icon.ico', format='ICO', sizes=[(256, 256)])
+          "
+
+      - name: 打包为 EXE
+        run: |
+          pyinstaller --windowed --onefile --name "待办记事本" --icon icon.ico --add-data "assets/alert.wav;assets" main.py
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: 待办记事本-Windows
+          path: dist/待办记事本.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install py2app
+
+      - name: 打包为 APP
+        run: |
+          python setup.py py2app --packages=PySide6
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: 待办记事本-macOS
+          path: dist/待办记事本.app
