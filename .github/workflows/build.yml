@@ -27,6 +27,8 @@ jobs:
 
       - name: 生成应用图标 (ICO)
         run: |
+          pip install Pillow
+
           python -c "
           from PIL import Image, ImageDraw, ImageFont
           import os
